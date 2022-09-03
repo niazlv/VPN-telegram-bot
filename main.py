@@ -39,7 +39,7 @@ def callback_inline(call):
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="Я вас понял!")
             markup = types.InlineKeyboardMarkup()
             markup.add(types.InlineKeyboardButton(text="Закрыть",callback_data="destroy"))
-            s = subprocess.run(["sudo /bin/sh /opt/src/addvpnuser.sh", str(call.message.chat.id),"12345678"])
+            s = subprocess.run(["sudo /bin/bash /opt/src/addvpnuser.sh", str(call.message.chat.id),"12345678"])
             print(s.returncode)
             print(s.stdout)
             bot.send_message(call.message.chat.id,
