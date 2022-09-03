@@ -44,6 +44,7 @@ def callback_inline(call):
             print(s.stdout)
             bot.send_message(call.message.chat.id,
                 "Ваши данные: \n"
+                "\tip: "+"176.124.217.129\n"
                 "\tlogin: "+str(call.message.chat.id)+"\n"
                 "\tpassword: "+str(12345678)+"\n"
                 ,reply_markup=markup)
