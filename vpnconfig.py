@@ -1,13 +1,15 @@
 import datetime
+import imp
 import os
 import subprocess
 
+from config import ip
 
 i2tp = "/etc/ppp/chap-secrets"
 x_auth = "/etc/ipsec.d/passwd"  #openssl passwd -1 "passwd"
 psk = "/etc/ipsec.secrets"
 
-ip = "176.124.217.129"
+
 #open UDP ports 500 and 4500 for the VPN
 
 def restartServices()->int:
