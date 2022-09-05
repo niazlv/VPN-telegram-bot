@@ -2,7 +2,9 @@ import telebot
 from telebot import types
 import subprocess
 
+import vpnconfig
 from config import *
+
 
 bot = telebot.TeleBot(token)
 
@@ -39,14 +41,17 @@ def callback_inline(call):
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="Я вас понял!")
             markup = types.InlineKeyboardMarkup()
             markup.add(types.InlineKeyboardButton(text="Закрыть",callback_data="destroy"))
-            s = subprocess.Popen(["sudo /bin/bash /opt/src/addvpnuser.sh '" +str(call.message.chat.id)+"' '12345678'"],shell=True)
-            print(s.returncode)
-            print(s.stdout)
+            
+            user = str(call.message.chat.id)
+            password = "12345678"
+            vpnconfig.autoadduser(user,password)
             bot.send_message(call.message.chat.id,
                 "Ваши данные: \n"
-                "\tip: "+"176.124.217.129\n"
-                "\tlogin: "+str(call.message.chat.id)+"\n"
-                "\tpassword: "+str(12345678)+"\n"
+                "\ttype protocol: 'IPSec Xauth PSK' / 'L2TP/IPSec PSK'\n"
+                "\tip: "+vpnconfig.ip+"\n"
+                "\tlogin: "+user+"\n"
+                "\tpassword: "+password+"\n"
+                "\tPSK(pre-shared key): "+ vpnconfig.getPSK()+"\n"
                 ,reply_markup=markup)
         if call.data == "destroy":
             bot.delete_message(chat_id=call.message.chat.id,message_id=call.message.message_id)
