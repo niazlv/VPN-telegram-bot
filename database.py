@@ -3,6 +3,8 @@ import json
 import sqlite3
 from xmlrpc.client import Boolean
 
+from vpnconfig import ip
+
 # users:
 #   [
 #       *userid*: 
@@ -22,6 +24,7 @@ from xmlrpc.client import Boolean
 #   [
 #       *vpnid*:
 #           [
+#               server: str
 #               protocol: str
 #               user: str
 #               password: str
@@ -36,7 +39,7 @@ class databaseVPN:
     cur = sqlite3.Cursor
     def __init__(self):
         print("class databaseVPN is upped")
-        self.conn = sqlite3.connect("./databaseVPN.db")
+        self.conn = sqlite3.connect("./databaseVPN.db",check_same_thread=False)
         self.cur = self.conn.cursor()
         self.cur.execute(""" CREATE TABLE IF NOT EXISTS 'Users' (
                         'id' INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,7 +54,8 @@ class databaseVPN:
                         'vpnids' JSON NOT NULL DEFAULT '{}');
         """)
         self.cur.execute(""" CREATE TABLE IF NOT EXISTS 'vpns' (
-                        'vpnid' INTEGER PRIMARY KEY UNIQUE,
+                        'vpnid' INTEGER PRIMARY KEY AUTOINCREMENT,
+                        'server' VARCHAR(100) NOT NULL,
                         'protocol' VARCHAR(100) NOT NULL,
                         'user' VARCHAR(45) NOT NULL,
                         'password' VARCHAR(45) NOT NULL,
@@ -70,11 +74,12 @@ class databaseVPN:
     def getUser(self, type:str ,data:any)->list:
         return self.cur.execute("SELECT * FROM users WHERE "+type+" = ?;",(str(data),)).fetchall()
     
-    def addVpn(self, vpnid:int, protocol:str, user:str, password:str, time_delete:datetime=datetime.date(2029,1,1).strftime('%Y-%m-%d %H:%M:%S')):
-
-        data = (vpnid,protocol,user,password,time_delete)
-        self.cur.execute("INSERT INTO vpns(vpnid, protocol, user, password, time_delete) VALUES(?, ?, ?, ?, ?);",data)
+    def addVpn(self, protocol:str, user:str, password:str, ip:str=ip, time_delete:datetime=datetime.date(2029,1,1).strftime('%Y-%m-%d %H:%M:%S'))->int:
+        "return added id"
+        data = (protocol,user,password,time_delete,ip)
+        self.cur.execute("INSERT INTO vpns(protocol, user, password, time_delete, server) VALUES(?, ?, ?, ?, ?);",data)
         self.conn.commit()
+        return self.cur.execute("SELECT last_insert_rowid()").fetchall()[0][0]
 
     def getVpn(self, vpnid:int)->list:
         return self.cur.execute("SELECT * FROM vpns WHERE vpnid = ?",(vpnid,)).fetchall()
