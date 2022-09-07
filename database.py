@@ -96,3 +96,8 @@ class databaseVPN:
         data = (updated_on,_data, userid)
         self.cur.execute("UPDATE Users SET updated_on = ?, "+type+" = ? WHERE userid = ?;",data)
         self.conn.commit()
+
+    def updateVpn(self,vpnid:str,type:str,_data:str):
+        data = (_data, vpnid)
+        self.cur.execute("UPDATE vpns SET "+type+" = ? WHERE vpnid = ?;",data)
+        self.conn.commit()
