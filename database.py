@@ -41,7 +41,7 @@ class databaseVPN:
         print("class databaseVPN is upped")
         self.conn = sqlite3.connect("./databaseVPN.db",check_same_thread=False)
         self.cur = self.conn.cursor()
-        self.cur.execute(""" CREATE TABLE IF NOT EXISTS 'Users' (
+        self.cur.execute(r""" CREATE TABLE IF NOT EXISTS 'Users' (
                         'id' INTEGER PRIMARY KEY AUTOINCREMENT,
                         'userid' VARCHAR(45) NOT NULL,
                         'firstname' VARCHAR(45) NULL,
@@ -51,15 +51,17 @@ class databaseVPN:
                         'updated_on' DATETIME,
                         'balance' INT NOT NULL DEFAULT 0,
                         'isMale' TINYINT NOT NULL DEFAULT 1,
-                        'vpnids' JSON NOT NULL DEFAULT '{}');
+                        'vpnids' JSON NOT NULL DEFAULT '{}',
+                        'ammount' INT NOT NULL DEFAULT 1);
         """)
-        self.cur.execute(""" CREATE TABLE IF NOT EXISTS 'vpns' (
+        self.cur.execute(r""" CREATE TABLE IF NOT EXISTS 'vpns' (
                         'vpnid' INTEGER PRIMARY KEY AUTOINCREMENT,
                         'server' VARCHAR(100) NOT NULL,
                         'protocol' VARCHAR(100) NOT NULL,
                         'user' VARCHAR(45) NOT NULL,
                         'password' VARCHAR(45) NOT NULL,
-                        'time_delete' DATETIME NOT NULL);
+                        'time_delete' DATETIME NOT NULL,
+                        'status' JSON NOT NULL DEFAULT '{"status": {"value": 1, "description": "auto added by creating"}}');
         """)
         self.conn.commit()
     def addUser(self,userid:str,vpnids:dict[str,any],firstname:str=None,lastname:str=None,birthday:datetime=datetime.date(1970,1,1).strftime('%Y-%m-%d %H:%M:%S'),balance:int=0,isMale:bool=True):

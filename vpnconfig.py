@@ -173,6 +173,21 @@ def autoadduser(user:str,password:str)->int:
     restartServices()
     return 0
 
+def autodeluser(user:str)->int:
+    """NOT RECOMENDED USE THIS FUNCTION. 
+    Be careful. Remember that i2tp and x_auth variables must be actual.
+    """
+    result = removeuser(user=user,src=i2tp)
+    if(not result == 0):
+        print("ERROR: i2tp user not deleted")
+        return result
+    result = removeuser(user=user,src=x_auth)
+    if(not result == 0):
+        print("ERROR: x-auth user not deleted")
+        return result
+    restartServices()
+    return 0
+
 def getPSK(src:str=psk)->str:
     """Return PSK"""
     data = read(src)[0]
