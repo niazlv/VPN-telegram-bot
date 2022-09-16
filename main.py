@@ -514,6 +514,7 @@ def after_refill(message):
         balance = int(db.getUser("userid",message.chat.id)[0][7])
         if(isReal_payment):
             price = [types.LabeledPrice(label="Руб",amount=int(float(int(float(message.text)*10)/10)*100))]
+            bot.send_message(message.chat.id,"Вам был отправлен чек. Пожалуйста оплатите его!",reply_markup=types.ReplyKeyboardRemove())
             bot.send_invoice(
                 message.chat.id,        #chat_id
                 "Оплата",               #title
