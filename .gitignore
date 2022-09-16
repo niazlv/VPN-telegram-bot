@@ -1,0 +1,9 @@
+#generated folders
+backups/
+__pycache__/
+
+#sqlite3 database
+databaseVPN.db
+
+#additional files
+test.py
