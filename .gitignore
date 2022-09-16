@@ -2,6 +2,9 @@
 backups/
 __pycache__/
 
+#name extension
+*.backup
+
 #sqlite3 database
 databaseVPN.db
 
