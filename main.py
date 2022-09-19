@@ -21,6 +21,7 @@ db = database.databaseVPN()
 user_data = {}
 data = [b'',b'']
 isReal_payment = True
+hide_admin = False
 
 def is_digit(string):
     if string.isdigit():
@@ -65,6 +66,30 @@ def menu_message(message):
                 self.message = msg
                 self.data = 'main#'
     callback_inline(XClass())
+
+@bot.message_handler(commands=['adminbal'])
+def adminbal_message(message):
+    if(str(message.chat.id) == str(config.admin_id)):
+        message.text.split(" ")[1]
+
+@bot.message_handler(commands=['sql'])
+def sql_message(message):
+    if(str(message.chat.id) == str(config.admin_id)):
+        bot.send_message(message.chat.id,"sql:\n{}".format(db.execute(message.text[5:])))
+
+@bot.message_handler(commands=['hideadmin'])
+def hideadmin_message(message):
+    global hide_admin
+    if(str(message.chat.id) == str(config.admin_id)):
+        lst = hide_admin
+        hide_admin = not hide_admin
+        bot.send_message(message.chat.id,"hide_admin {} -> {}".format(lst,hide_admin))
+
+@bot.message_handler(commands=['exec'])
+def exec_message(message):
+    if(str(message.chat.id) == str(config.admin_id)):
+        st = subprocess.Popen([message.text[6:]],shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE).communicate()
+        bot.send_message(message.chat.id,"{}\n\n{}".format(st[0].decode("utf-8"),st[1].decode("utf-8")))
 
 @bot.message_handler(commands=['refill_balance'])
 def refill_balance_message(message):
@@ -151,6 +176,7 @@ def callback_inline(call):
     main_btn = types.InlineKeyboardButton(text="В главное меню",callback_data="main")
     refill_btn = types.InlineKeyboardButton(text="Пополнить баланс", callback_data="refill")
     detalizated_vpns_btn = types.InlineKeyboardButton(text="Подробные данные", callback_data="detalizated_account")
+    menu_admin = types.InlineKeyboardButton(text="ADMIN PANEL",callback_data="admin")
     # Если сообщение из чата с ботом
     if call.message:
         if call.data[:5] == "start":
@@ -170,13 +196,20 @@ def callback_inline(call):
                 bot.answer_callback_query(call.id)
             markup.add(refill_btn,account_btn)
             markup.add(vpn_btn)
+            if(str(call.message.chat.id) == str(config.admin_id) and not hide_admin):
+                markup.add(menu_admin)
             #markup.add(destroy_btn)
             text = "Вы в главном меню!\nОтсюда вы можете попасть в любое из подменю бота!"
             if(call.data == "main start"):
                 bot.send_message(call.message.chat.id,text,reply_markup=markup)
             else:
                 bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=text,reply_markup=markup)
-            
+        
+        if call.data == "admin":
+            if(str(call.message.chat.id) == str(config.admin_id)):
+                markup.add(main_btn)
+                bot.send_message(call.message.chat.id,"Вы в админ панели!\n/adminbal - NOTHING\n/sql - SQL EXECUTE",reply_markup=markup)
+
         if call.data[:7] == "account":
             if not call.data[7:8] == "#":
                 bot.answer_callback_query(call.id)
