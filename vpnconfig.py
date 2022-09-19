@@ -8,6 +8,7 @@ from config import ip
 i2tp = "/etc/ppp/chap-secrets"
 x_auth = "/etc/ipsec.d/passwd"  #openssl passwd -1 "passwd"
 psk = "/etc/ipsec.secrets"
+ikev2script = "./ikev2_modern.sh"
 
 
 #open UDP ports 500 and 4500 for the VPN
@@ -203,4 +204,26 @@ def setPSK(_PSK,src:str=psk)->int:
     result = write([data],src)
     restartServices()
     return result
-    
+
+def set_profiles(name,timeout):
+    global data
+    print(name)
+    print(timeout)
+    try:
+        st = subprocess.Popen([ikev2script, "--addclient",name,"--v",str(timeout)],stdout=subprocess.PIPE,stderr=subprocess.PIPE).communicate()
+        data = st
+        if(len(str(st[1]))>len("b''")):
+            return 0
+    except Exception as e:
+        print(e)
+
+def get_profiles(args):
+    global data
+    name = args
+    try:
+        st = subprocess.Popen([ikev2script, "--exportclient",name],stdout=subprocess.PIPE,stderr=subprocess.PIPE).communicate()
+        data = st
+        if(len(str(st[1]))>len("b''")):
+            return 0
+    except Exception as e:
+        print(e)

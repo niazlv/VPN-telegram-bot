@@ -114,29 +114,6 @@ def vpn_message(message):
                 self.data = 'vpn'
     callback_inline(XClass())
 
-def set_profiles(name,timeout):
-    global data
-    print(name)
-    print(timeout)
-    try:
-        st = subprocess.Popen(["./ikev2_modern.sh","--addclient",name,"--v",str(timeout)],stdout=subprocess.PIPE,stderr=subprocess.PIPE).communicate()
-        data = st
-        if(len(str(st[1]))>len("b''")):
-            return 0
-    except Exception as e:
-        print(e)
-
-def get_profiles(args):
-    global data
-    name = args
-    try:
-        st = subprocess.Popen(["./ikev2_modern.sh","--exportclient",name],stdout=subprocess.PIPE,stderr=subprocess.PIPE).communicate()
-        data = st
-        if(len(str(st[1]))>len("b''")):
-            return 0
-    except Exception as e:
-        print(e)
-
 def getvpnstr(userid:str, detalizated=False)->str:
     result = ""
     try:
@@ -204,7 +181,9 @@ def callback_inline(call):
             if not call.data[7:8] == "#":
                 bot.answer_callback_query(call.id)
             edit_btn = types.InlineKeyboardButton(text="Изменить",callback_data="edit")
+            ikev2_get_btn = types.InlineKeyboardButton(text="Мои IKEv2(beta)",callback_data="get_vpn_ikev2")
             markup.add(edit_btn,detalizated_vpns_btn)
+            markup.add(ikev2_get_btn)
             markup.add(main_btn)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, 
                 text="Вы - '"+str(call.message.chat.id)+"'\n"
@@ -235,12 +214,13 @@ def callback_inline(call):
         if call.data == "vpn":
             #if not (call.data[3:4] == '#'):
             #    bot.answer_callback_query(call.id)
-            item1 = types.InlineKeyboardButton(text="Создать",callback_data="create_vpn")
-            ikev2_create_btn = types.InlineKeyboardButton("Создать IKEv2",callback_data="vpn_ikev2")
+            item1 = types.InlineKeyboardButton(text="Создать(IPSec Xauth PSK)", callback_data="create_vpn")
+            ikev2_create_btn = types.InlineKeyboardButton(text="IKEv2(сертификат)", callback_data="vpn_ikev2")
+            whichbetter_btn = types.InlineKeyboardButton(text="Что выбрать?", callback_data='whichisbetter')
             item2 = types.InlineKeyboardButton(text="Мои VPN", callback_data="detalizated_account")
             markup.add(item1,item2)
-            # markup.add(ikev2_create_btn)
-            markup.add(main_btn)
+            markup.add(ikev2_create_btn)
+            markup.add(whichbetter_btn, main_btn)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="Выберите интересующие варианты:",reply_markup=markup)
         if call.data[:10] == "create_vpn":
             if(not call.data[10:11] == "#"):
@@ -390,26 +370,29 @@ def callback_inline(call):
             bot.register_next_step_handler(msg,after_refill)
             if(not call.data[6:7] == "#"):
                 bot.answer_callback_query(call.id)
-        if call.data == "vpn_ikev2":
-            ikev2_set_btn = types.InlineKeyboardButton(text="Создать IKEv2(beta)",callback_data="generate_vpn_ikev2")
+        if call.data[:9] == "vpn_ikev2":
+            if not (call.data[9:10] == "#"):
+                bot.answer_callback_query(call.id)
+            ikev2_set_btn = types.InlineKeyboardButton(text="Создать IKEv2(beta)",callback_data="ikev2_buy")
             ikev2_get_btn = types.InlineKeyboardButton(text="Мои IKEv2(beta)",callback_data="get_vpn_ikev2")
             ikev2_config_btn = types.InlineKeyboardButton(text="Настройки IKEv2",callback_data="ikev2_settings")
+            _back_btn = types.InlineKeyboardButton(text="Назад",callback_data="vpn")
             alphabet = string.ascii_letters + string.digits
             #creditals
             try:
                 len(user_data[call.message.chat.id]['ikev2']['name'])
             except Exception as e:
-                print(e)
                 user = str(call.message.chat.id)+''.join(secrets.choice(string.digits) for i in range(10))
                 user_data[call.message.chat.id] = {}
                 user_data[call.message.chat.id]['ikev2'] = {}
                 user_data[call.message.chat.id]['ikev2']['timeout'] = 1
-                user_data[call.message.chat.id]['ikev2']['name'] = name
+                user_data[call.message.chat.id]['ikev2']['price'] = config.ikev2_price
+                user_data[call.message.chat.id]['ikev2']['name'] = user+"IKEv2"
             markup.add(ikev2_set_btn,ikev2_get_btn)
             markup.add(ikev2_config_btn)
-            markup.add(vpn_btn)
-            #bot.edit_message_text(chat_id=call.message.chat.id,message_id=call.message.message_id,text="Что вы хотите сделать?",reply_markup=markup)
-            bot.send_message(call.message.chat.id,"Что вы хотите сделать?",reply_markup=markup)
+            markup.add(_back_btn)
+            bot.edit_message_text(chat_id=call.message.chat.id,message_id=call.message.message_id,text="Выберите нужный пункт.",reply_markup=markup)
+            #bot.send_message(call.message.chat.id,"Выберите нужный пункт.",reply_markup=markup)
         if call.data[:14] == "ikev2_settings":
             if call.data[15:22] == "timeout":
                 _ide = call.data[22:23]
@@ -422,35 +405,97 @@ def callback_inline(call):
                     time = 120
                 inc_btn = types.InlineKeyboardButton(text="+1мес",callback_data="ikev2_settings timeout"+_ide+str(time+1))
                 dec_btn = types.InlineKeyboardButton(text="-1мес", callback_data="ikev2_settings timeout"+_ide+str(time-1))
-                success_btn = types.InlineKeyboardButton(text="Готово",callback_data="ikev2_settings success "+str(time))
+                inc10_btn = types.InlineKeyboardButton(text="+10мес",callback_data="ikev2_settings timeout"+_ide+str(time+10))
+                dec10_btn = types.InlineKeyboardButton(text="-10мес", callback_data="ikev2_settings timeout"+_ide+str(time-10))
+                success_btn = types.InlineKeyboardButton(text="Готово",callback_data="ikev2_settings success"+_ide+str(time))
                 markup.add(inc_btn,dec_btn)
+                markup.add(inc10_btn,dec10_btn)
                 markup.add(success_btn)
                 month = ""+numeral.get_plural(int(time), "месяц, месяца, месяцев")
-                bot.edit_message_text(chat_id=call.message.chat.id,message_id=call.message.message_id,text='{}'.format(month),reply_markup=markup)
+                price = config.ikev2_price * time
+                user_data[call.message.chat.id]['ikev2']['temp_price'] = config.ikev2_price * time
+                bot.edit_message_text(chat_id=call.message.chat.id,message_id=call.message.message_id,text='{}\nprice: {}₽'.format(month,price),reply_markup=markup)
                 if not isFirst:
                     bot.answer_callback_query(call.id)
             elif call.data[15:22] == "success":
+                bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=call.message.message_id,reply_markup=types.InlineKeyboardMarkup())
                 ikev2_config_btn = types.InlineKeyboardButton(text="Назад",callback_data="ikev2_settings")
                 user_data[call.message.chat.id]['ikev2']['timeout'] = int(call.data[23:])
+                user_data[call.message.chat.id]['ikev2']['price'] = config.ikev2_price * int(call.data[23:])
                 markup.add(ikev2_config_btn)
                 bot.send_message(call.message.chat.id,"удачно поменяли дату",reply_markup=markup)
             elif call.data[15:] == "name":
-                msg = bot.edit_message_text(chat_id=call.message.chat.id,message_id=call.message.message_id,text="Введите имя профиля:")
+                msg = bot.edit_message_text(chat_id=call.message.chat.id,message_id=call.message.message_id,text="Введите имя IKEv2 профиля:")
                 bot.register_next_step_handler(msg,ikev2_config_after)
             else:
-                timeout_btn = types.InlineKeyboardButton(text="Время жизни",callback_data="ikev2_settings timeout")
-                name_btn = types.InlineKeyboardButton(text="Название",callback_data="ikev2_settings name")
+                timeout_btn = types.InlineKeyboardButton(text="Время жизни",callback_data="ikev2_settings timeout 1")
+                name_btn = types.InlineKeyboardButton(text="Имя IKEv2",callback_data="ikev2_settings name")
                 _vpn_btn=types.InlineKeyboardButton(text="Назад",callback_data="vpn_ikev2")
                 markup.add(timeout_btn,name_btn)
                 markup.add(_vpn_btn)
-                bot.edit_message_text(chat_id=call.message.chat.id,message_id=call.message.message_id,text="Вы в меню настроек IKEv2\nтекущие настройки:\n\t\tname: {}\n\t\ttime: {}".format(user_data[call.message.chat.id]['ikev2']['name'],user_data[call.message.chat.id]['ikev2']['timeout']),reply_markup=markup)
-            
+                try:
+                    bot.edit_message_text(chat_id=call.message.chat.id,message_id=call.message.message_id,
+                                        text="Вы в меню настроек IKEv2\nтекущие настройки:\n\t\tname: {}\n\t\ttime: {}\n\t\tprice: {}₽".format(
+                                            user_data[call.message.chat.id]['ikev2']['name'],
+                                            numeral.get_plural(int(user_data[call.message.chat.id]['ikev2']['timeout']), "месяц, месяца, месяцев"),
+                                            user_data[call.message.chat.id]['ikev2']['price'])
+                                        ,reply_markup=markup)
+                except KeyError as e:
+                    bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=call.message.message_id,reply_markup=types.InlineKeyboardMarkup())
+                    bot.send_message(call.message.chat.id,"Сессия устарела!")
+                    msg = bot.send_message(call.message.chat.id,"*vpn_ikev2*")
+                    class XClass(object):
+                        def __init__(self):
+                            self.message = msg
+                            self.data = 'vpn_ikev2#'
+                    callback_inline(XClass())
+        
+        if call.data[:9] == "ikev2_buy":
+            if call.data[10:] == "yes":
+                _balance = int(db.execute("SELECT balance FROM Users WHERE userid = {}".format(call.message.chat.id))[0][0])
+                print(_balance)
+                try:
+                    if(_balance-(int(user_data[call.message.chat.id]['ikev2']['price'])*10) >= 0):
+                        _balance = _balance-(int(user_data[call.message.chat.id]['ikev2']['price'])*10)
+                        db.updateUser(str(call.message.chat.id),"balance",str(_balance))
+                        bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=call.message.message_id,reply_markup=types.InlineKeyboardMarkup())
+                        msg = bot.send_message(call.message.chat.id,"Операция прошла успешно!")
+                        class XClass(object):
+                            def __init__(self):
+                                self.message = msg
+                                self.data = "generate_vpn_ikev2"
+                        callback_inline(XClass())
+                    else:
+                        refill_btn = types.InlineKeyboardButton(text="Пополнить баланс", callback_data="refill "+str(int(float(user_data[call.message.chat.id]['ikev2']['price'])*10)))
+                        markup.add(refill_btn)
+                        markup.add(main_btn)
+                        bot.edit_message_text(chat_id=call.message.chat.id,message_id=call.message.message_id,text="Недостаточно средств на балансе!",reply_markup=markup)
+                except Exception as e:
+                    print(e)
+                    bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=call.message.message_id,reply_markup=types.InlineKeyboardMarkup())
+                    bot.send_message(call.message.chat.id,"Упс... У нас что-то сломалось. Попробуй ещё раз или позже")
+            elif call.data[10:] == "no":
+                _vpn_btn=types.InlineKeyboardButton(text="Назад",callback_data="vpn_ikev2")
+                markup.add(_vpn_btn)
+                bot.edit_message_reply_markup(chat_id=call.message.chat.id,message_id=call.message.message_id,reply_markup=types.InlineKeyboardMarkup())
+                bot.send_message(call.message.chat.id,"Операция отклонена!",reply_markup=markup)
+            else:
+                yes_btn = types.InlineKeyboardButton(text="Да",callback_data="ikev2_buy yes")
+                no_btn = types.InlineKeyboardButton(text="Нет",callback_data="ikev2_buy no")
+                markup.add(yes_btn,no_btn)
+                bot.send_message(call.message.chat.id,
+                                "Вы хотите купить IKEv2 Профиль(сертификат):\n\t\tname: {}\n\t\ttime: {}\n\t\tprice: {}₽".format(
+                                    user_data[call.message.chat.id]['ikev2']['name'],
+                                    numeral.get_plural(int(user_data[call.message.chat.id]['ikev2']['timeout']), "месяц, месяца, месяцев"),
+                                    user_data[call.message.chat.id]['ikev2']['price'])
+                                ,reply_markup=markup)
+            bot.answer_callback_query(call.id)
 
         if call.data == "generate_vpn_ikev2":
             try:
                 bot.send_message(call.message.chat.id,"wait.")
                 name = user_data[call.message.chat.id]['ikev2']['name']
-                ikev2_set_thread = threading.Thread(target=set_profiles,args=(name,user_data[call.message.chat.id]['ikev2']['timeout']))
+                ikev2_set_thread = threading.Thread(target=vpnconfig.set_profiles,args=(name,user_data[call.message.chat.id]['ikev2']['timeout']))
                 ikev2_set_thread.start()
                 ikev2_set_thread.join()
                 if(len(str(data[1]))>len("b''")):
@@ -470,10 +515,16 @@ def callback_inline(call):
                 if(not (removef[0] == 0)):
                     print(removef)
                 _data = db.execute("SELECT vpnids FROM Users WHERE userid = {}".format(call.message.chat.id))[0]
-                print(_data)
                 _json = json.loads(_data[0])
-                _json["ikev2"].append(name)
+                # _json["ikev2"].append(name)
+                _json['ikev2'].append({"value":name,"time":user_data[call.message.chat.id]['ikev2']['timeout']})
                 db.updateUser(str(call.message.chat.id),"vpnids",json.dumps(_json))
+                msg = bot.send_message(call.message.chat.id,"*vpn_ikev2*")
+                class XClass(object):
+                    def __init__(self):
+                        self.message = msg
+                        self.data = 'vpn_ikev2#'
+                callback_inline(XClass())
             except FileNotFoundError as e:
                 print(e)
                 bot.send_message(call.message.chat.id,"Я не могу отправить тебе файл, его нет!")
@@ -482,32 +533,101 @@ def callback_inline(call):
                 bot.send_message(call.message.chat.id,"Кажется возникла проблема с записью в базу данных данного ikev2 vpn. Он работает, но не будет отображаться в профиле. Обратитесь к администрации, чтобы исправить это недоразумение.")
             except KeyError as e:
                 bot.send_message(call.message.chat.id,"Сессия устарела!")
+                msg = bot.send_message(call.message.chat.id,"*vpn_ikev2*")
+                class XClass(object):
+                    def __init__(self):
+                        self.message = msg
+                        self.data = 'vpn_ikev2#'
+                callback_inline(XClass())
             except Exception as e:
                 print(e)
                 bot.send_message(call.message.chat.id,"Что-то сломалося")
-        if call.data == "get_vpn_ikev2":
+        if call.data[:13] == "get_vpn_ikev2":
             try:
                 _data = db.execute("SELECT vpnids FROM Users WHERE userid = {}".format(call.message.chat.id))[0]
-                print(_data)
                 _json = json.loads(_data[0])
-                for i in _json["ikev2"]:
-                    ikev2_get_thread = threading.Thread(target=get_profiles,args=(str(i),))
+                if call.data[14:17] == "get":
+                    __data = call.data[18:]
+                    _id = ""
+                    for i,vol in enumerate(_json["ikev2"]):
+                        if(i+1 == int(__data)):
+                            try:
+                                _volJson = vol
+                                _vol = _volJson["value"]
+                                _voltime = ''+numeral.get_plural(int(_volJson["time"]), "месяц, месяца, месяцев")
+                            except Exception as e:
+                                _vol = vol
+                                _voltime = "null"
+                            _id = _vol
+                            break
+                    if(_id == ""):
+                        ikev2_get_btn = types.InlineKeyboardButton(text="Назад",callback_data="vpn_ikev2")
+                        markup.add(ikev2_get_btn)
+                        bot.send_message(call.message.chat.id,"Выбранный id вне списка!",reply_markup=markup)
+                        raise IndexError
+                    ikev2_get_thread = threading.Thread(target=vpnconfig.get_profiles,args=(str(_id),))
                     ikev2_get_thread.start()
                     bot.send_message(call.message.chat.id,"wait.")
                     ikev2_get_thread.join()
-                    bot.send_message(call.message.chat.id,"print: '"+ i +"' ikev2")
-                    files = [   types.InputFile(file=open("../{}.p12".format(i),"rb")),
-                                types.InputFile(file=open("../{}.mobileconfig".format(i),"rb")),
-                                types.InputFile(file=open("../{}.sswan".format(i),'rb'))
+                    files = [   types.InputFile(file=open("../{}.p12".format(_id),"rb")),
+                                types.InputFile(file=open("../{}.mobileconfig".format(_id),"rb")),
+                                types.InputFile(file=open("../{}.sswan".format(_id),'rb'))
                             ]
                     for z in files:
                         bot.send_document(call.message.chat.id,z)
-                    removef = subprocess.getstatusoutput('rm -f ../{}.*'.format(name))
+                    bot.send_message(call.message.chat.id,"{}.p12 (for Windows & Linux)\n{}.sswan (for Android)\n{}.mobileconfig (for iOS & macOS)".format(_id,_id,_id))
+                    bot.send_message(call.message.chat.id,"Инструкция: https://github.com/hwdsl2/setup-ipsec-vpn/blob/master/docs/ikev2-howto.md#configure-ikev2-vpn-clients \nВыберите вашу систему и проделайте все по инструкции")
+                    removef = subprocess.getstatusoutput('rm -f ../{}.*'.format(_id))
                     if(not (removef[0] == 0)):
                         print(removef)
+                    msg = bot.send_message(call.message.chat.id,"*vpn_ikev2*")
+                    class XClass(object):
+                        def __init__(self):
+                            self.message = msg
+                            self.data = 'vpn_ikev2#'
+                    callback_inline(XClass())
+                else:
+                    _name = ""
+                    for i,vol in enumerate(_json["ikev2"]):
+                        try:
+                            _volJson = vol
+                            _vol = _volJson["value"]
+                            _voltime = ''+numeral.get_plural(int(_volJson["time"]), "месяц, месяца, месяцев")
+                        except Exception as e:
+                            _vol = vol
+                            _voltime = "null"
+                        _name += "{}. name: {}\n\t   time: {}\n\n".format(i+1,_vol,_voltime)
+                    bot.send_message(call.message.chat.id,"список: \n"+_name)
+                    msg = bot.send_message(call.message.chat.id,"Выберите тот, что хотите загрузить: ")
+                    bot.register_next_step_handler(msg,get_vpn_ikev2_after)
+                # for i in _json["ikev2"]:
+                #     ikev2_get_thread = threading.Thread(target=get_profiles,args=(str(i),))
+                #     ikev2_get_thread.start()
+                #     bot.send_message(call.message.chat.id,"wait.")
+                #     ikev2_get_thread.join()
+                #     bot.send_message(call.message.chat.id,"print: '"+ i +"' ikev2")
+                #     files = [   types.InputFile(file=open("../{}.p12".format(i),"rb")),
+                #                 types.InputFile(file=open("../{}.mobileconfig".format(i),"rb")),
+                #                 types.InputFile(file=open("../{}.sswan".format(i),'rb'))
+                #             ]
+                #     for z in files:
+                #         bot.send_document(call.message.chat.id,z)
+                #     removef = subprocess.getstatusoutput('rm -f ../{}.*'.format(i))
+                #     if(not (removef[0] == 0)):
+                #         print(removef)
             except IndexError as e:
                 pass
-
+        if call.data == "whichisbetter":
+            _vpn_btn=types.InlineKeyboardButton(text="Назад",callback_data="vpn")
+            markup.add(destroy_btn)
+            bot.send_message(call.message.chat.id,
+                "Что лучше выбрать?\n"
+                "\n"
+                "Покупать стоит лучше IKEv2, ибо это новый протокол и считается более безопасным, нежели тот же I2TP/X-auth\n"
+                "\n"
+                "Мой бот предоставляет возможность выбора того или иного протокола, отнюдь это не значит что они оба безопасны.\n"
+                "IKEv2 выдаётся как сертификаты, а не конкретные данные. Так что будте бдительны при покупке!"
+            ,reply_markup=markup)
     # Если сообщение из инлайн-режима
     elif call.inline_message_id:
         if call.data == "test":
@@ -643,7 +763,7 @@ def after_buy_ammount(message):
             bot.send_message(message.chat.id,"Произошла ошибка на сервере, деньги не были списаны. Попробуйте позже")
 
 def ikev2_config_after(message):
-    user_data[message.chat.id]['ikev2']['name'] = message.chat.id+"_"+message.text.replace(" ","_").replace("\\","-").replace("/","-").replace("@","-").replace("#","-").replace("!","-").replace("&","-").replace("^","-").replace("(","_").replace(")","_").replace("<","_").replace(">","_").replace("%%","_").replace("{","_").replace("}","_").replace(":","_").replace(";","_").replace("?","_")
+    user_data[message.chat.id]['ikev2']['name'] = str(message.chat.id)+"_"+message.text.replace(" ","_").replace("\\","-").replace("/","-").replace("@","-").replace("#","-").replace("!","-").replace("&","-").replace("^","-").replace("(","_").replace(")","_").replace("<","_").replace(">","_").replace("%%","_").replace("{","_").replace("}","_").replace(":","_").replace(";","_").replace("?","_")
     msg = bot.send_message(message.chat.id,"*ikev2 config*")
     class XClass(object):
         def __init__(self):
@@ -651,12 +771,21 @@ def ikev2_config_after(message):
             self.data = 'ikev2_settings#'
     callback_inline(XClass())
 
+def get_vpn_ikev2_after(message):
+    if(is_digit(message.text)):
+        msg = bot.send_message(message.chat.id,"*get_vpn_ikev2*")
+        class XClass(object):
+            def __init__(self):
+                self.message = msg
+                self.data = 'get_vpn_ikev2#get {}'.format(int(message.text))
+        callback_inline(XClass())
+
 def after_refill(message):
     markup = types.InlineKeyboardMarkup()
     main_btn = types.InlineKeyboardButton(text="В главное меню",callback_data="main")
     markup.add(main_btn)
     if(is_digit(message.text)):
-        if(int(message.text)==0):
+        if(float(message.text)==0):
             bot.send_message(message.chat.id,"Вы вышли",reply_markup=types.ReplyKeyboardRemove())
             msg = bot.send_message(message.chat.id,"*menu*")
             class XClass(object):
